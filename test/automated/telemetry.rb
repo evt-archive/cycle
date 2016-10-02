@@ -35,6 +35,7 @@ context "Cycle" do
     context "Got No Result" do
       cycle = Iterator::Cycle.build(delay_milliseconds: 50, timeout_milliseconds: 100)
       sink = Iterator::Cycle.register_telemetry_sink(cycle)
+
       cycle.() do
         nil
       end

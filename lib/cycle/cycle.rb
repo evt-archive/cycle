@@ -81,7 +81,7 @@ class Cycle
       end
     end
 
-    logger.opt_trace "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.opt_debug "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     return result
   end
@@ -125,8 +125,6 @@ class Cycle
       record :delayed
       record :timed_out
     end
-
-    Data = Struct.new :milliseconds
 
     def self.sink
       Sink.new
