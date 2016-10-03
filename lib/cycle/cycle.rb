@@ -135,13 +135,13 @@ class Cycle
     def self.build
       Cycle::None.build.tap do |instance|
         sink = Cycle.register_telemetry_sink(instance)
-        instance.sink = sink
+        instance.telemetry_sink = sink
       end
     end
   end
 
   class None < Cycle
-    attr_accessor :sink
+    attr_accessor :telemetry_sink
 
     def call(&action)
       action.call
