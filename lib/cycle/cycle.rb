@@ -1,7 +1,7 @@
 class Cycle
   dependency :clock, Clock::UTC
   dependency :telemetry, Telemetry
-  dependency :logger, Telemetry::Logger
+  dependency :logger, Log
 
   def delay_milliseconds
     @delay_milliseconds ||= Defaults.delay_milliseconds
@@ -38,7 +38,7 @@ class Cycle
   def configure
     Clock::UTC.configure self
     ::Telemetry.configure self
-    ::Telemetry::Logger.configure self
+    Log.configure self
   end
 
   def self.call(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, &action)
@@ -52,7 +52,7 @@ class Cycle
       stop_time = clock.now + (timeout_milliseconds.to_f / 1000.0)
     end
 
-    logger.opt_trace "Cycling (Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.trace "Cycling (Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     iteration = -1
     result = nil
@@ -63,10 +63,10 @@ class Cycle
       result = invoke(iteration, &action)
 
       if delay_condition.(result)
-        logger.opt_debug "No results (Iteration: #{iteration})"
+        logger.debug "No results (Iteration: #{iteration})"
         delay
       else
-        logger.opt_debug "Got results (Iteration: #{iteration})"
+        logger.debug "Got results (Iteration: #{iteration})"
         telemetry.record :got_result
         break
       end
@@ -74,31 +74,31 @@ class Cycle
       if !timeout_milliseconds.nil?
         now = clock.now
         if now >= stop_time
-          logger.opt_debug "Timeout has lapsed (Iteration: #{iteration}, Stop Time: #{clock.iso8601(stop_time)}, Timeout Milliseconds: #{timeout_milliseconds})"
+          logger.debug "Timeout has lapsed (Iteration: #{iteration}, Stop Time: #{clock.iso8601(stop_time)}, Timeout Milliseconds: #{timeout_milliseconds})"
           telemetry.record :timed_out, now
           break
         end
       end
     end
 
-    logger.opt_debug "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.debug "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     return result
   end
 
   def invoke(iteration, &action)
-    logger.opt_trace "Invoking action (Iteration: #{iteration})"
+    logger.trace "Invoking action (Iteration: #{iteration})"
 
     result = action.call
     telemetry.record :invoked_action
 
-    logger.opt_debug "Invoked action (Iteration: #{iteration})"
+    logger.debug "Invoked action (Iteration: #{iteration})"
 
     result
   end
 
   def delay
-    logger.opt_trace "Delaying (Milliseconds: #{delay_milliseconds})"
+    logger.trace "Delaying (Milliseconds: #{delay_milliseconds})"
 
     delay_seconds = (delay_milliseconds.to_f / 1000.0)
 
@@ -106,7 +106,7 @@ class Cycle
 
     telemetry.record :delayed, delay_milliseconds
 
-    logger.opt_debug "Finished delaying (Milliseconds: #{delay_milliseconds})"
+    logger.debug "Finished delaying (Milliseconds: #{delay_milliseconds})"
   end
 
   def self.register_telemetry_sink(writer)
