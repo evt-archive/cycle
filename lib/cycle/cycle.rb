@@ -3,6 +3,9 @@ class Cycle
   dependency :telemetry, Telemetry
   dependency :logger, Log
 
+  attr_writer :delay_milliseconds
+  attr_writer :delay_condition
+
   def delay_milliseconds
     @delay_milliseconds ||= Defaults.delay_milliseconds
   end
@@ -11,14 +14,16 @@ class Cycle
     @delay_condition ||= Defaults.delay_condition
   end
 
-  initializer na(:delay_milliseconds), :timeout_milliseconds, na(:delay_condition)
+  initializer :timeout_milliseconds
 
   def self.build(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
     if delay_milliseconds.nil? && timeout_milliseconds.nil?
-      return None.build
+      return none
     end
 
-    new(delay_milliseconds, timeout_milliseconds, delay_condition).tap do |instance|
+    new(timeout_milliseconds).tap do |instance|
+      instance.delay_milliseconds = delay_milliseconds
+      instance.delay_condition = delay_condition
       instance.configure
     end
   end
@@ -33,6 +38,10 @@ class Cycle
     end
 
     receiver.public_send "#{attr_name}=", instance
+  end
+
+  def self.none
+    None.build
   end
 
   def configure
@@ -144,7 +153,7 @@ class Cycle
     attr_accessor :telemetry_sink
 
     def self.build(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-      new(delay_milliseconds, timeout_milliseconds, delay_condition).tap do |instance|
+      new(timeout_milliseconds).tap do |instance|
         instance.configure
       end
     end
