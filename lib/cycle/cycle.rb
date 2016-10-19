@@ -14,6 +14,10 @@ class Cycle
   initializer na(:delay_milliseconds), :timeout_milliseconds, na(:delay_condition)
 
   def self.build(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
+    if delay_milliseconds.nil? && timeout_milliseconds.nil?
+      return None.build
+    end
+
     new(delay_milliseconds, timeout_milliseconds, delay_condition).tap do |instance|
       instance.configure
     end
@@ -25,11 +29,7 @@ class Cycle
     if !cycle.nil?
       instance = cycle
     else
-      if delay_milliseconds.nil? && timeout_milliseconds.nil?
-        instance = None.build
-      else
-        instance = build(delay_milliseconds: delay_milliseconds, timeout_milliseconds: timeout_milliseconds, delay_condition: delay_condition)
-      end
+      instance = build(delay_milliseconds: delay_milliseconds, timeout_milliseconds: timeout_milliseconds, delay_condition: delay_condition)
     end
 
     receiver.public_send "#{attr_name}=", instance
@@ -142,6 +142,12 @@ class Cycle
 
   class None < Cycle
     attr_accessor :telemetry_sink
+
+    def self.build(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
+      new(delay_milliseconds, timeout_milliseconds, delay_condition).tap do |instance|
+        instance.configure
+      end
+    end
 
     def call(&action)
       action.call
