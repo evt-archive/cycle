@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name = 'evt-cycle'
-  s.version = '0.2.0.0'
+  s.version = '0.2.0.1'
   s.summary = 'Generalized retry'
   s.description = ' '
 
@@ -20,5 +20,5 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'evt-clock'
   s.add_runtime_dependency 'evt-initializer'
 
-  s.add_development_dependency 'ntl-test_bench'
+  s.add_development_dependency 'test_bench'
 end
