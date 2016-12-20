@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
-  s.name = 'cycle'
+  s.name = 'evt-cycle'
   s.version = '0.2.0.0'
   s.summary = 'Generalized retry'
   s.description = ' '
