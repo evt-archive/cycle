@@ -61,7 +61,7 @@ class Cycle
       stop_time = clock.now + (timeout_milliseconds.to_f / 1000.0)
     end
 
-    logger.trace "Cycling (Delay Milliseconds: #{maximum_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.trace "Cycling (Maximum Milliseconds: #{maximum_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     iteration = -1
     result = nil
@@ -69,11 +69,17 @@ class Cycle
       iteration += 1
       telemetry.record :cycle, iteration
 
+      action_start_time = clock.now
       result = invoke(iteration, &action)
 
       if delay_condition.(result)
         logger.debug "No results (Iteration: #{iteration})"
-        delay
+
+        now = clock.now
+
+        elapsed_milliseconds = clock.elapsed_milliseconds action_start_time, now
+
+        delay elapsed_milliseconds
       else
         logger.debug "Got results (Iteration: #{iteration})"
         telemetry.record :got_result
@@ -90,7 +96,7 @@ class Cycle
       end
     end
 
-    logger.debug "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{maximum_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.debug "Cycled (Iterations: #{iteration}, Maximum Milliseconds: #{maximum_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     return result
   end
@@ -106,16 +112,23 @@ class Cycle
     result
   end
 
-  def delay
-    logger.trace "Delaying (Milliseconds: #{maximum_milliseconds})"
+  def delay(elapsed_milliseconds)
+    logger.trace "Delaying (Milliseconds: #{maximum_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
 
-    delay_seconds = (maximum_milliseconds.to_f / 1000.0)
+    delay_milliseconds = maximum_milliseconds - elapsed_milliseconds
+
+    if delay_milliseconds <= 0
+      logger.debug "Elapsed time exceeds maximum; not delayed (Milliseconds: #{maximum_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
+      return
+    end
+
+    delay_seconds = (delay_milliseconds.to_f / 1000.0)
 
     sleep delay_seconds
 
-    telemetry.record :delayed, maximum_milliseconds
+    telemetry.record :delayed, delay_milliseconds
 
-    logger.debug "Finished delaying (Milliseconds: #{maximum_milliseconds})"
+    logger.debug "Finished delaying (Milliseconds: #{maximum_milliseconds}, Delayed Milliseconds: #{delay_milliseconds})"
   end
 
   def self.register_telemetry_sink(writer)

@@ -18,7 +18,7 @@ context "Cycle" do
     end
 
     test "Delayed before retrying" do
-      assert(sink.recorded_delayed? { |record| record.data == 1 })
+      assert(sink.recorded_delayed?)
     end
 
     test "Timed out" do
