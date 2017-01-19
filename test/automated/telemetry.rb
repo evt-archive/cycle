@@ -3,7 +3,7 @@ require_relative 'automated_init'
 context "Cycle" do
   context "Telemetry" do
     context "Got Result" do
-      cycle = Cycle.build(delay_milliseconds: 1, timeout_milliseconds: 2)
+      cycle = Cycle.build(maximum_milliseconds: 1, timeout_milliseconds: 2)
       sink = Cycle.register_telemetry_sink(cycle)
 
       cycle.() do
@@ -33,7 +33,7 @@ context "Cycle" do
     end
 
     context "Got No Result" do
-      cycle = Cycle.build(delay_milliseconds: 1, timeout_milliseconds: 2)
+      cycle = Cycle.build(maximum_milliseconds: 1, timeout_milliseconds: 2)
       sink = Cycle.register_telemetry_sink(cycle)
 
       cycle.() do

@@ -2,7 +2,7 @@ require_relative 'automated_init'
 
 context "Cycle" do
   context "Retry when action yields no result" do
-    cycle = Cycle.build(delay_milliseconds: 1, timeout_milliseconds: 2)
+    cycle = Cycle.build(maximum_milliseconds: 1, timeout_milliseconds: 2)
     sink = Cycle.register_telemetry_sink(cycle)
 
     action = proc { nil }
@@ -18,7 +18,7 @@ context "Cycle" do
     end
 
     test "Delayed before retrying" do
-      assert(sink.recorded_delayed? { |record| record.data == 1 })
+      assert(sink.recorded_delayed?)
     end
 
     test "Timed out" do
@@ -27,7 +27,7 @@ context "Cycle" do
   end
 
   context "No retry when action yields results" do
-    cycle = Cycle.build(delay_milliseconds: 1, timeout_milliseconds: 2)
+    cycle = Cycle.build(maximum_milliseconds: 1, timeout_milliseconds: 2)
     sink = Cycle.register_telemetry_sink(cycle)
 
     action = proc { :something }
