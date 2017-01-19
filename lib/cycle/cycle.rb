@@ -3,11 +3,11 @@ class Cycle
   dependency :telemetry, Telemetry
   dependency :logger, Log
 
-  attr_writer :delay_milliseconds
+  attr_writer :maximum_milliseconds
   attr_writer :delay_condition
 
-  def delay_milliseconds
-    @delay_milliseconds ||= Defaults.delay_milliseconds
+  def maximum_milliseconds
+    @maximum_milliseconds ||= Defaults.maximum_milliseconds
   end
 
   def delay_condition
@@ -16,25 +16,25 @@ class Cycle
 
   initializer :timeout_milliseconds
 
-  def self.build(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-    if delay_milliseconds.nil? && timeout_milliseconds.nil?
+  def self.build(maximum_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
+    if maximum_milliseconds.nil? && timeout_milliseconds.nil?
       return none
     end
 
     new(timeout_milliseconds).tap do |instance|
-      instance.delay_milliseconds = delay_milliseconds
+      instance.maximum_milliseconds = maximum_milliseconds
       instance.delay_condition = delay_condition
       instance.configure
     end
   end
 
-  def self.configure(receiver, attr_name: nil, delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, cycle: nil)
+  def self.configure(receiver, attr_name: nil, maximum_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, cycle: nil)
     attr_name ||= :cycle
 
     if !cycle.nil?
       instance = cycle
     else
-      instance = build(delay_milliseconds: delay_milliseconds, timeout_milliseconds: timeout_milliseconds, delay_condition: delay_condition)
+      instance = build(maximum_milliseconds: maximum_milliseconds, timeout_milliseconds: timeout_milliseconds, delay_condition: delay_condition)
     end
 
     receiver.public_send "#{attr_name}=", instance
@@ -50,8 +50,8 @@ class Cycle
     Log.configure self
   end
 
-  def self.call(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, &action)
-    instance = build(delay_milliseconds: delay_milliseconds, timeout_milliseconds: timeout_milliseconds, delay_condition: delay_condition)
+  def self.call(maximum_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, &action)
+    instance = build(maximum_milliseconds: maximum_milliseconds, timeout_milliseconds: timeout_milliseconds, delay_condition: delay_condition)
     instance.call(&action)
   end
 
@@ -61,7 +61,7 @@ class Cycle
       stop_time = clock.now + (timeout_milliseconds.to_f / 1000.0)
     end
 
-    logger.trace "Cycling (Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.trace "Cycling (Delay Milliseconds: #{maximum_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     iteration = -1
     result = nil
@@ -90,7 +90,7 @@ class Cycle
       end
     end
 
-    logger.debug "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{delay_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.debug "Cycled (Iterations: #{iteration}, Delay Milliseconds: #{maximum_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     return result
   end
@@ -107,15 +107,15 @@ class Cycle
   end
 
   def delay
-    logger.trace "Delaying (Milliseconds: #{delay_milliseconds})"
+    logger.trace "Delaying (Milliseconds: #{maximum_milliseconds})"
 
-    delay_seconds = (delay_milliseconds.to_f / 1000.0)
+    delay_seconds = (maximum_milliseconds.to_f / 1000.0)
 
     sleep delay_seconds
 
-    telemetry.record :delayed, delay_milliseconds
+    telemetry.record :delayed, maximum_milliseconds
 
-    logger.debug "Finished delaying (Milliseconds: #{delay_milliseconds})"
+    logger.debug "Finished delaying (Milliseconds: #{maximum_milliseconds})"
   end
 
   def self.register_telemetry_sink(writer)
@@ -152,7 +152,7 @@ class Cycle
   class None < Cycle
     attr_accessor :telemetry_sink
 
-    def self.build(delay_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
+    def self.build(maximum_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
       new(timeout_milliseconds).tap do |instance|
         instance.configure
       end
@@ -164,7 +164,7 @@ class Cycle
   end
 
   module Defaults
-    def self.delay_milliseconds
+    def self.maximum_milliseconds
       200
     end
 
