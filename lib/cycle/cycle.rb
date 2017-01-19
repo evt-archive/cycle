@@ -70,6 +70,7 @@ class Cycle
       telemetry.record :cycle, iteration
 
       action_start_time = clock.now
+
       result = invoke(iteration, &action)
 
       if delay_condition.(result)
