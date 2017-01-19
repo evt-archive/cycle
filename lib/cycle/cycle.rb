@@ -1,7 +1,8 @@
 class Cycle
+  include Log::Dependency
+
   dependency :clock, Clock::UTC
   dependency :telemetry, Telemetry
-  dependency :logger, Log
 
   attr_writer :maximum_milliseconds
   attr_writer :delay_condition
@@ -47,7 +48,6 @@ class Cycle
   def configure
     Clock::UTC.configure self
     ::Telemetry.configure self
-    Log.configure self
   end
 
   def self.call(maximum_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, &action)
