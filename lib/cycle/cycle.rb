@@ -1,16 +1,17 @@
 class Cycle
+  Error = Class.new(RuntimeError)
+
   include Log::Dependency
 
   dependency :clock, Clock::UTC
   dependency :telemetry, Telemetry
 
   attr_writer :interval_milliseconds
-  attr_writer :delay_condition
-
   def interval_milliseconds
     @interval_milliseconds ||= Defaults.interval_milliseconds
   end
 
+  attr_writer :delay_condition
   def delay_condition
     @delay_condition ||= Defaults.delay_condition
   end
@@ -74,7 +75,7 @@ class Cycle
       result = invoke(iteration, &action)
 
       if delay_condition.(result)
-        logger.debug "No results (Iteration: #{iteration})"
+        logger.debug "Got no results from action (Iteration: #{iteration})"
 
         now = clock.now
 
@@ -82,7 +83,7 @@ class Cycle
 
         delay elapsed_milliseconds
       else
-        logger.debug "Got results (Iteration: #{iteration})"
+        logger.debug "Got results from action (Iteration: #{iteration})"
         telemetry.record :got_result
         break
       end
@@ -102,10 +103,18 @@ class Cycle
     return result
   end
 
+## TODO iteration should be nilable
+## log output: iteration.inspect (because possible nil)
   def invoke(iteration, &action)
+    if action.nil?
+      raise Error, "Cycle must be actuated with a block"
+    end
+
     logger.trace "Invoking action (Iteration: #{iteration})"
 
-    result = action.call
+    result = action.call(iteration)
+## action_invoked
+## record telemetry data with iteration
     telemetry.record :invoked_action
 
     logger.debug "Invoked action (Iteration: #{iteration})"
@@ -114,12 +123,12 @@ class Cycle
   end
 
   def delay(elapsed_milliseconds)
-    logger.trace "Delaying (Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
-
     delay_milliseconds = interval_milliseconds - elapsed_milliseconds
 
+    logger.trace "Delaying (Delay Milliseconds: #{delay_milliseconds}, Interval Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
+
     if delay_milliseconds <= 0
-      logger.debug "Elapsed time exceeds interval; not delayed (Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
+      logger.debug "Elapsed time exceeds or equals interval. Not delayed. (Delay Milliseconds: #{delay_milliseconds}, Interval Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
       return
     end
 
@@ -129,12 +138,12 @@ class Cycle
 
     telemetry.record :delayed, delay_milliseconds
 
-    logger.debug "Finished delaying (Milliseconds: #{interval_milliseconds}, Delayed Milliseconds: #{delay_milliseconds})"
+    logger.debug "Finished delaying (Delay Milliseconds: #{delay_milliseconds}, Interval Milliseconds: #{interval_milliseconds}, Delayed Milliseconds: #{delay_milliseconds})"
   end
 
-  def self.register_telemetry_sink(writer)
+  def self.register_telemetry_sink(cycle)
     sink = Telemetry.sink
-    writer.telemetry.register sink
+    cycle.telemetry.register(sink)
     sink
   end
 
@@ -161,19 +170,33 @@ class Cycle
         instance.telemetry_sink = sink
       end
     end
+
+## Only needed to put sink on substitute
+    # class Cycle < None
+    #   attr_accessor :telemetry_sink
+    # end
   end
 
   class None < Cycle
+## TODO Remove when substitute uses it's own None
     attr_accessor :telemetry_sink
 
+## TODO can use splat placeholders here to indicate args non-significant
     def self.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
       new(timeout_milliseconds).tap do |instance|
         instance.configure
       end
     end
 
+## TODO Remove when invoke call is in place
+    # def call(&action)
+    #   action.call
+    # end
+
+## TODO Call invoke
     def call(&action)
-      action.call
+      iteration = 0
+      invoke(iteration, &action)
     end
   end
 
