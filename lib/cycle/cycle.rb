@@ -98,7 +98,7 @@ class Cycle
       end
     end
 
-    logger.debug "Cycled (Iterations: #{iteration}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.debug "Cycled (Iterations: #{iteration + 1}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
 
     return result
   end
