@@ -11,20 +11,26 @@ class Cycle
     @interval_milliseconds ||= Defaults.interval_milliseconds
   end
 
+  attr_writer :timeout_milliseconds
+  def timeout_milliseconds
+    @timeout_milliseconds ||= Defaults.timeout_milliseconds
+  end
+
   attr_writer :delay_condition
   def delay_condition
     @delay_condition ||= Defaults.delay_condition
   end
 
-  initializer :timeout_milliseconds
-
   def self.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-    if interval_milliseconds.nil? && timeout_milliseconds.nil?
-      return none
-    end
+## TODO Try 0 values instead of none
+    # if interval_milliseconds.nil? && timeout_milliseconds.nil?
+    #   return none
+    # end
 
-    new(timeout_milliseconds).tap do |instance|
+## TODO Try this instead of none
+    new.tap do |instance|
       instance.interval_milliseconds = interval_milliseconds
+      instance.timeout_milliseconds = timeout_milliseconds
       instance.delay_condition = delay_condition
       instance.configure
     end
@@ -58,11 +64,13 @@ class Cycle
 
   def call(&action)
     stop_time = nil
+    stop_time_iso8601 = nil
     if !timeout_milliseconds.nil?
       stop_time = clock.now + (timeout_milliseconds.to_f / 1000.0)
+      stop_time_iso8601 = clock.iso8601(stop_time, precision: 5)
     end
 
-    logger.trace "Cycling (Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.trace "Cycling (Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})"
 
     iteration = -1
     result = nil
@@ -91,14 +99,14 @@ class Cycle
       if !timeout_milliseconds.nil?
         now = clock.now
         if now >= stop_time
-          logger.debug "Timeout has lapsed (Iteration: #{iteration}, Stop Time: #{clock.iso8601(stop_time)}, Timeout Milliseconds: #{timeout_milliseconds})"
+          logger.debug "Timeout has lapsed (Iteration: #{iteration}, Stop Time: #{stop_time_iso8601}, Timeout Milliseconds: #{timeout_milliseconds})"
           telemetry.record :timed_out, now
           break
         end
       end
     end
 
-    logger.debug "Cycled (Iterations: #{iteration + 1}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.debug "Cycled (Iterations: #{iteration + 1}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})"
 
     return result
   end
@@ -202,12 +210,16 @@ class Cycle
 
   module Defaults
     def self.interval_milliseconds
-      200
+      0
+    end
+
+    def self.timeout_milliseconds
+      0
     end
 
     def self.delay_condition
       lambda do |result|
-        if result.respond_to? :empty?
+        if result.respond_to?(:empty?)
           result.empty?
         else
           result.nil?
