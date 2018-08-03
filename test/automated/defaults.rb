@@ -4,12 +4,6 @@ context "Cycle" do
   context "Defaults" do
     cycle = Cycle.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
 
-pp cycle
-
-fail if cycle.interval_milliseconds != 0
-      # fail "Interval should be 0, not 200"
-
-
     context "Interval Milliseconds" do
       default_interval_milliseconds = Cycle::Defaults.interval_milliseconds
 
