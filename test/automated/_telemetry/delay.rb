@@ -6,9 +6,9 @@ context "Cycle" do
       cycle = Cycle.build(interval_milliseconds: 1, timeout_milliseconds: 2)
       sink = Cycle.register_telemetry_sink(cycle)
 
-      action = proc { nil }
-
-      cycle.(&action)
+      cycle.() do
+        nil
+      end
 
       test "Cycle is delayed by interval milliseconds" do
         assert(sink.recorded_delayed? { |record| record.data == 1 })
@@ -25,12 +25,10 @@ context "Cycle" do
 
       clock.now = Controls::Time::Raw.example
 
-      action = proc {
+      cycle.() do
         clock.now = Controls::Time::Offset::Raw.example elapsed_milliseconds
         nil
-      }
-
-      cycle.(&action)
+      end
 
       test "Cycle is delayed by interval milliseconds less elapsed time" do
         delay_milliseconds = cycle.interval_milliseconds - elapsed_milliseconds
@@ -49,12 +47,10 @@ context "Cycle" do
 
       clock.now = Controls::Time::Raw.example
 
-      action = proc {
+      cycle.() do
         clock.now = Controls::Time::Offset::Raw.example elapsed_milliseconds
         nil
-      }
-
-      cycle.(&action)
+      end
 
       test "Cycle is not delayed" do
         refute(sink.recorded_delayed?)

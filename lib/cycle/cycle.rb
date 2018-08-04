@@ -63,6 +63,8 @@ class Cycle
   end
 
   def call(&action)
+## TODO Move this into loop
+## Timeout has to be reset for each loop
     stop_time = nil
     stop_time_iso8601 = nil
     if !timeout_milliseconds.nil?
@@ -72,19 +74,19 @@ class Cycle
 
     logger.trace { "Cycling (Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})" }
 
-    iteration = -1
+    cycle = -1
     result = nil
     loop do
-      iteration += 1
-      telemetry.record :cycle, iteration
+      cycle += 1
+      telemetry.record :cycle, cycle
 
-      result, elapsed_milliseconds = invoke(iteration, &action)
+      result, elapsed_milliseconds = invoke(cycle, &action)
 
       if delay_condition.(result)
-        logger.debug { "Got no results from action (Iteration: #{iteration})" }
+        logger.debug { "Got no results from action (Cycle: #{cycle})" }
         delay(elapsed_milliseconds)
       else
-        logger.debug { "Got results from action (Iteration: #{iteration})" }
+        logger.debug { "Got results from action (Cycle: #{cycle})" }
         telemetry.record :got_result
         break
       end
@@ -92,39 +94,39 @@ class Cycle
       if !timeout_milliseconds.nil?
         now = clock.now
         if now >= stop_time
-          logger.debug { "Timeout has lapsed (Iteration: #{iteration}, Stop Time: #{stop_time_iso8601}, Timeout Milliseconds: #{timeout_milliseconds})" }
+          logger.debug { "Timeout has lapsed (Cycle: #{cycle}, Stop Time: #{stop_time_iso8601}, Timeout Milliseconds: #{timeout_milliseconds})" }
           telemetry.record :timed_out, now
           break
         end
       end
     end
 
-    logger.debug { "Cycled (Iterations: #{iteration + 1}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})" }
+    logger.debug { "Cycled (Iterations: #{cycle + 1}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})" }
 
     return result
   end
 
-## TODO iteration should be nilable
-## log output: iteration.inspect (because possible nil)
-  def invoke(iteration, &action)
+## TODO cycle should be nilable
+## log output: cycle.inspect (because possible nil)
+  def invoke(cycle, &action)
     if action.nil?
       raise Error, "Cycle must be actuated with a block"
     end
 
     action_start_time = clock.now
 
-    logger.trace { "Invoking action (Iteration: #{iteration}, Start Time: #{clock.iso8601(action_start_time, precision: 5)})" }
+    logger.trace { "Invoking action (Cycle: #{cycle}, Start Time: #{clock.iso8601(action_start_time, precision: 5)})" }
 
-    result = action.call(iteration)
+    result = action.call(cycle)
 
     action_end_time = clock.now
     elapsed_milliseconds = clock.elapsed_milliseconds(action_start_time, action_end_time)
 
 ## action_invoked
-## record telemetry data with iteration
+## record telemetry data with cycle
     telemetry.record :invoked_action
 
-    logger.debug { "Invoked action (Iteration: #{iteration}, Elapsed Milliseconds: #{elapsed_milliseconds}, Start Time: #{clock.iso8601(action_start_time, precision: 5)}, End Time: #{clock.iso8601(action_end_time, precision: 5)})" }
+    logger.debug { "Invoked action (Cycle: #{cycle}, Elapsed Milliseconds: #{elapsed_milliseconds}, Start Time: #{clock.iso8601(action_start_time, precision: 5)}, End Time: #{clock.iso8601(action_end_time, precision: 5)})" }
 
     [result, elapsed_milliseconds]
   end
@@ -202,8 +204,8 @@ class Cycle
 
 ## TODO Call invoke
     def call(&action)
-      iteration = 0
-      invoke(iteration, &action)
+      cycle = 0
+      invoke(cycle, &action)
     end
   end
 end
