@@ -5,7 +5,6 @@ context "Action Got Eventual Result" do
     cycle = Cycle.build(timeout_milliseconds: 11)
 
     cycles = nil
-
     cycle.() do |i|
       cycles = i + 1
 
