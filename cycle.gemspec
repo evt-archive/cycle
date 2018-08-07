@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name = 'evt-cycle'
-  s.version = '0.4.0.0'
-  s.summary = 'Generalized retry'
+  s.version = '0.5.0.0'
+  s.summary = 'Generalized implementation of polling'
   s.description = ' '
 
   s.authors = ['The Eventide Project']
