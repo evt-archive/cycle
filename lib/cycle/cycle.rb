@@ -11,10 +11,7 @@ class Cycle
     @interval_milliseconds ||= Defaults.interval_milliseconds
   end
 
-  attr_writer :timeout_milliseconds
-  def timeout_milliseconds
-    @timeout_milliseconds ||= Defaults.timeout_milliseconds
-  end
+  attr_accessor :timeout_milliseconds
 
   attr_writer :delay_condition
   def delay_condition
@@ -22,18 +19,15 @@ class Cycle
   end
 
   def self.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-## TODO Try 0 values instead of none
-    # if interval_milliseconds.nil? && timeout_milliseconds.nil?
-    #   return none
-    # end
+    instance = new
 
-## TODO Try this instead of none
-    new.tap do |instance|
-      instance.interval_milliseconds = interval_milliseconds
-      instance.timeout_milliseconds = timeout_milliseconds
-      instance.delay_condition = delay_condition
-      instance.configure
-    end
+    instance.interval_milliseconds = interval_milliseconds
+    instance.timeout_milliseconds = timeout_milliseconds
+    instance.delay_condition = delay_condition
+
+    instance.configure
+
+    instance
   end
 
   def self.configure(receiver, attr_name: nil, interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, cycle: nil)
@@ -174,38 +168,18 @@ class Cycle
 
   module Substitute
     def self.build
-      Cycle::None.build.tap do |instance|
-        sink = Cycle.register_telemetry_sink(instance)
-        instance.telemetry_sink = sink
-      end
+      instance = Cycle.build(timeout_milliseconds: 0)
+
+      sink = Cycle.register_telemetry_sink(instance)
+      instance.telemetry_sink = sink
+
+      instance.configure
+
+      instance
     end
 
-## Only needed to put sink on substitute
-    # class Cycle < None
-    #   attr_accessor :telemetry_sink
-    # end
-  end
-
-  class None < Cycle
-## TODO Remove when substitute uses it's own None
-    attr_accessor :telemetry_sink
-
-## TODO can use splat placeholders here to indicate args non-significant
-    def self.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-      new(timeout_milliseconds).tap do |instance|
-        instance.configure
-      end
-    end
-
-## TODO Remove when invoke call is in place
-    # def call(&action)
-    #   action.call
-    # end
-
-## TODO Call invoke
-    def call(&action)
-      cycle = 0
-      invoke(cycle, &action)
+    class Cycle < ::Cycle
+      attr_accessor :telemetry_sink
     end
   end
 end

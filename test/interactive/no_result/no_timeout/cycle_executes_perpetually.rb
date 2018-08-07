@@ -4,9 +4,8 @@ context "Action Got No Result" do
   context "No Timeout" do
     cycle = Cycle.build
 
-    cycles = nil
     result = cycle.() do |i|
-      cycles = i + 1
+      puts i
       nil
     end
 

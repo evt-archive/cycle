@@ -13,10 +13,8 @@ context "Cycle" do
     end
 
     context "Timeout Milliseconds" do
-      default_timeout_milliseconds = Cycle::Defaults.interval_milliseconds
-
-      test "#{default_timeout_milliseconds}" do
-        assert(cycle.timeout_milliseconds == default_timeout_milliseconds)
+      test "nil" do
+        assert(cycle.timeout_milliseconds == nil)
       end
     end
 
