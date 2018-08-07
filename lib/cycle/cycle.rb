@@ -57,8 +57,6 @@ class Cycle
   end
 
   def call(&action)
-## TODO Move this into loop
-## Timeout has to be reset for each loop
     stop_time = nil
     stop_time_iso8601 = nil
     if !timeout_milliseconds.nil?
@@ -100,8 +98,6 @@ class Cycle
     return result
   end
 
-## TODO cycle should be nilable
-## log output: cycle.inspect (because possible nil)
   def invoke(cycle, &action)
     if action.nil?
       raise Error, "Cycle must be actuated with a block"
