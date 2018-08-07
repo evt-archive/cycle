@@ -3,14 +3,14 @@ require_relative '../../../automated_init'
 context "Telemetry" do
   context "Action Got No Result" do
     context "Interval" do
-      context "Cycle time is less than the interval time" do
+      context "Cycle Time Is Less than the Interval Time" do
         interval_milliseconds = 1
-        timeout_milliseconds = 2
+        timeout_milliseconds = 0
         cycle = Cycle.build(interval_milliseconds: interval_milliseconds, timeout_milliseconds: timeout_milliseconds)
 
         sink = Cycle.register_telemetry_sink(cycle)
 
-        result = cycle.() do
+        result = cycle.() do |i|
           nil
         end
 
@@ -22,7 +22,7 @@ context "Telemetry" do
           refute(sink.recorded_got_result?)
         end
 
-        test "Delayed before retrying" do
+        test "Delayed before re-executing" do
           assert(sink.recorded_delayed?)
         end
 

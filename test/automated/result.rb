@@ -3,10 +3,7 @@ require_relative 'automated_init'
 context "Cycle's Result" do
   cycle = Cycle.build
 
-  cycles = nil
-  result = cycle.() do |i|
-    cycles = i + 1
-
+  result = cycle.() do
     :something
   end
 

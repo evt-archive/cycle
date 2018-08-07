@@ -2,7 +2,7 @@ require_relative '../../automated_init'
 
 context "Telemetry" do
   context "Action Got Immediate Result" do
-    timeout_milliseconds = 1
+    timeout_milliseconds = 0
     cycle = Cycle.build(timeout_milliseconds: timeout_milliseconds)
 
     sink = Cycle.register_telemetry_sink(cycle)
