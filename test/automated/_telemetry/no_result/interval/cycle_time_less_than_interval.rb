@@ -10,12 +10,12 @@ context "Telemetry" do
 
         sink = Cycle.register_telemetry_sink(cycle)
 
-        res = cycle.() do
+        result = cycle.() do
           nil
         end
 
         test "Cycle's result is the return value of the action" do
-          assert(res.nil?)
+          assert(result.nil?)
         end
 
         test "Didn't get result" do
