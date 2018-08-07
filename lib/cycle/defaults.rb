@@ -4,10 +4,6 @@ class Cycle
       0
     end
 
-    def self.timeout_milliseconds
-      0
-    end
-
     def self.delay_condition
       lambda do |result|
         if result.respond_to?(:empty?)

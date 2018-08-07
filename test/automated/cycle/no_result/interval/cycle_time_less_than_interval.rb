@@ -4,13 +4,14 @@ context "Cycle" do
   context "Action Got No Result" do
     context "Interval" do
       context "Cycle time is less than the interval time" do
-        interval_milliseconds = 100
-        cycle = Cycle.build(interval_milliseconds: interval_milliseconds)
+        interval_milliseconds = 1
+        timeout_milliseconds = 0
+        cycle = Cycle.build(interval_milliseconds: interval_milliseconds, timeout_milliseconds: timeout_milliseconds)
 
         start_time = Time.now
 
         cycle_milliseconds = (interval_milliseconds - 1)
-        cycle.() do |i|
+        cycle.() do
           sleep cycle_milliseconds / 1000.0
           nil
         end
