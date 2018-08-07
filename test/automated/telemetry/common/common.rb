@@ -7,7 +7,10 @@ context "Telemetry" do
 
     sink = Cycle.register_telemetry_sink(cycle)
 
-    cycle.() { }
+    cycle_milliseconds = 1
+    cycle.() do
+      sleep cycle_milliseconds/1000.0
+    end
 
     test "Recorded cycle" do
       recorded_cycle = sink.recorded_cycle? do |record|
@@ -18,7 +21,11 @@ context "Telemetry" do
     end
 
     test "Recorded invoked action" do
-      assert(sink.recorded_invoked_action?)
+      recorded_invoked_action = sink.recorded_invoked_action? do |record|
+        record.data >= cycle_milliseconds
+      end
+
+      assert(recorded_invoked_action)
     end
   end
 end

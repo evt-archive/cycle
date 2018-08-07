@@ -112,9 +112,7 @@ class Cycle
     action_end_time = clock.now
     elapsed_milliseconds = clock.elapsed_milliseconds(action_start_time, action_end_time)
 
-## action_invoked
-## record telemetry data with cycle
-    telemetry.record :invoked_action
+    telemetry.record :invoked_action, elapsed_milliseconds
 
     logger.debug { "Invoked action (Cycle: #{cycle}, Elapsed Milliseconds: #{elapsed_milliseconds}, Start Time: #{clock.iso8601(action_start_time, precision: 5)}, End Time: #{clock.iso8601(action_end_time, precision: 5)})" }
 
