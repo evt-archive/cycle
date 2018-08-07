@@ -1,32 +1,33 @@
 class Cycle
+  Error = Class.new(RuntimeError)
+
   include Log::Dependency
 
   dependency :clock, Clock::UTC
   dependency :telemetry, Telemetry
 
   attr_writer :interval_milliseconds
-  attr_writer :delay_condition
-
   def interval_milliseconds
     @interval_milliseconds ||= Defaults.interval_milliseconds
   end
 
+  attr_accessor :timeout_milliseconds
+
+  attr_writer :delay_condition
   def delay_condition
     @delay_condition ||= Defaults.delay_condition
   end
 
-  initializer :timeout_milliseconds
-
   def self.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-    if interval_milliseconds.nil? && timeout_milliseconds.nil?
-      return none
-    end
+    instance = new
 
-    new(timeout_milliseconds).tap do |instance|
-      instance.interval_milliseconds = interval_milliseconds
-      instance.delay_condition = delay_condition
-      instance.configure
-    end
+    instance.interval_milliseconds = interval_milliseconds
+    instance.timeout_milliseconds = timeout_milliseconds
+    instance.delay_condition = delay_condition
+
+    instance.configure
+
+    instance
   end
 
   def self.configure(receiver, attr_name: nil, interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil, cycle: nil)
@@ -57,32 +58,27 @@ class Cycle
 
   def call(&action)
     stop_time = nil
+    stop_time_iso8601 = nil
     if !timeout_milliseconds.nil?
       stop_time = clock.now + (timeout_milliseconds.to_f / 1000.0)
+      stop_time_iso8601 = clock.iso8601(stop_time, precision: 5)
     end
 
-    logger.trace "Cycling (Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.trace { "Cycling (Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})" }
 
-    iteration = -1
+    cycle = -1
     result = nil
     loop do
-      iteration += 1
-      telemetry.record :cycle, iteration
+      cycle += 1
+      telemetry.record :cycle, cycle
 
-      action_start_time = clock.now
-
-      result = invoke(iteration, &action)
+      result, elapsed_milliseconds = invoke(cycle, &action)
 
       if delay_condition.(result)
-        logger.debug "No results (Iteration: #{iteration})"
-
-        now = clock.now
-
-        elapsed_milliseconds = clock.elapsed_milliseconds action_start_time, now
-
-        delay elapsed_milliseconds
+        logger.debug { "Got no results from action (Cycle: #{cycle})" }
+        delay(elapsed_milliseconds)
       else
-        logger.debug "Got results (Iteration: #{iteration})"
+        logger.debug { "Got results from action (Cycle: #{cycle})" }
         telemetry.record :got_result
         break
       end
@@ -90,36 +86,46 @@ class Cycle
       if !timeout_milliseconds.nil?
         now = clock.now
         if now >= stop_time
-          logger.debug "Timeout has lapsed (Iteration: #{iteration}, Stop Time: #{clock.iso8601(stop_time)}, Timeout Milliseconds: #{timeout_milliseconds})"
+          logger.debug { "Timeout has lapsed (Cycle: #{cycle}, Stop Time: #{stop_time_iso8601}, Timeout Milliseconds: #{timeout_milliseconds})" }
           telemetry.record :timed_out, now
           break
         end
       end
     end
 
-    logger.debug "Cycled (Iterations: #{iteration}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{clock.iso8601(stop_time)})"
+    logger.debug { "Cycled (Iterations: #{cycle + 1}, Interval Milliseconds: #{interval_milliseconds}, Timeout Milliseconds: #{timeout_milliseconds.inspect}, Stop Time: #{stop_time_iso8601})" }
 
     return result
   end
 
-  def invoke(iteration, &action)
-    logger.trace "Invoking action (Iteration: #{iteration})"
+  def invoke(cycle, &action)
+    if action.nil?
+      raise Error, "Cycle must be actuated with a block"
+    end
 
-    result = action.call
-    telemetry.record :invoked_action
+    action_start_time = clock.now
 
-    logger.debug "Invoked action (Iteration: #{iteration})"
+    logger.trace { "Invoking action (Cycle: #{cycle}, Start Time: #{clock.iso8601(action_start_time, precision: 5)})" }
 
-    result
+    result = action.call(cycle)
+
+    action_end_time = clock.now
+    elapsed_milliseconds = clock.elapsed_milliseconds(action_start_time, action_end_time)
+
+    telemetry.record :invoked_action, elapsed_milliseconds
+
+    logger.debug { "Invoked action (Cycle: #{cycle}, Elapsed Milliseconds: #{elapsed_milliseconds}, Start Time: #{clock.iso8601(action_start_time, precision: 5)}, End Time: #{clock.iso8601(action_end_time, precision: 5)})" }
+
+    [result, elapsed_milliseconds]
   end
 
   def delay(elapsed_milliseconds)
-    logger.trace "Delaying (Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
-
     delay_milliseconds = interval_milliseconds - elapsed_milliseconds
 
+    logger.trace { "Delaying (Delay Milliseconds: #{delay_milliseconds}, Interval Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})" }
+
     if delay_milliseconds <= 0
-      logger.debug "Elapsed time exceeds interval; not delayed (Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})"
+      logger.debug { "Elapsed time exceeds or equals interval. Not delayed. (Delay Milliseconds: #{delay_milliseconds}, Interval Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})" }
       return
     end
 
@@ -129,12 +135,12 @@ class Cycle
 
     telemetry.record :delayed, delay_milliseconds
 
-    logger.debug "Finished delaying (Milliseconds: #{interval_milliseconds}, Delayed Milliseconds: #{delay_milliseconds})"
+    logger.debug { "Finished delaying (Delay Milliseconds: #{delay_milliseconds}, Interval Milliseconds: #{interval_milliseconds}, Elapsed Milliseconds: #{elapsed_milliseconds})" }
   end
 
-  def self.register_telemetry_sink(writer)
+  def self.register_telemetry_sink(cycle)
     sink = Telemetry.sink
-    writer.telemetry.register sink
+    cycle.telemetry.register(sink)
     sink
   end
 
@@ -156,40 +162,18 @@ class Cycle
 
   module Substitute
     def self.build
-      Cycle::None.build.tap do |instance|
-        sink = Cycle.register_telemetry_sink(instance)
-        instance.telemetry_sink = sink
-      end
-    end
-  end
+      instance = Cycle.build(timeout_milliseconds: 0)
 
-  class None < Cycle
-    attr_accessor :telemetry_sink
+      sink = Cycle.register_telemetry_sink(instance)
+      instance.telemetry_sink = sink
 
-    def self.build(interval_milliseconds: nil, timeout_milliseconds: nil, delay_condition: nil)
-      new(timeout_milliseconds).tap do |instance|
-        instance.configure
-      end
+      instance.configure
+
+      instance
     end
 
-    def call(&action)
-      action.call
-    end
-  end
-
-  module Defaults
-    def self.interval_milliseconds
-      200
-    end
-
-    def self.delay_condition
-      lambda do |result|
-        if result.respond_to? :empty?
-          result.empty?
-        else
-          result.nil?
-        end
-      end
+    class Cycle < ::Cycle
+      attr_accessor :telemetry_sink
     end
   end
 end

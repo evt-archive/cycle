@@ -5,3 +5,4 @@ require 'initializer'; Initializer.activate
 
 require 'cycle/log'
 require 'cycle/cycle'
+require 'cycle/defaults'
