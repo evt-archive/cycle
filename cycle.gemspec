@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name = 'evt-cycle'
-  s.version = '0.5.0.0'
+  s.version = '0.OBSOLETE'
   s.summary = 'OBSOLETE. This library is superseded by evt-poll.'
   s.description = ' '
 
